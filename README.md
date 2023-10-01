@@ -96,6 +96,10 @@ docker compose up -d
   ```sh
   docker compose down --volumes --remove-orphans
   ```
+## コードの説明について
+- コードの説明は以下のサイト上で公開しています
+  - [Qiita](https://qiita.com/ablankz/items/2b3c8646f94f9cbd2ab9)
+  - [Zenn](https://zenn.dev/blank/articles/5ee1ae4b424ae6)
 
 ## 注意点
 
