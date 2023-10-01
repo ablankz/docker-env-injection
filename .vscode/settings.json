@@ -1,0 +1,22 @@
+{
+  "eslint.workingDirectories": ["./apps/web/selfroom-web"],
+  // "editor.fsormatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "prettier.ignorePath": ".prettierignore",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.tsdk": "apps/frontend/humanbrains-front/node_modules/typescript/lib",
+  "[php]": {
+    "editor.defaultFormatter": "bmewburn.vscode-intelephense-client"
+  },
+  "editor.tabSize": 2,
+  "editor.detectIndentation": false,
+  "files.associations": {
+    ".env*": "dotenv"
+  },
+  "[xml]": {
+    "editor.defaultFormatter": "redhat.vscode-xml"
+  }
+}

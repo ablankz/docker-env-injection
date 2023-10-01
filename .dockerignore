@@ -1,0 +1,8 @@
+.git
+**/dist
+**/node_modules/*
+**/vendor/*
+**/.DS_Store
+Dockerfile
+documents
+*.log

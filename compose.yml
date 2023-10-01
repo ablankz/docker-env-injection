@@ -1,0 +1,119 @@
+version: "3"
+
+services:
+  web: # reactWebサーバー
+    container_name: ${APP_NAME}-web
+    tty: true
+    build:
+      context: "./apps/web"
+    volumes:
+      - ./apps/web/${WEB_APP_NAME}:/usr/src/app
+      - node_modules:/usr/src/app/node_modules
+      - ./apps/web/scripts:/docker-init/scripts
+      - ./apps/web/templates:/docker-init/env_templates
+    environment:
+      - TZ=Asia/Tokyo
+      - CHOKIDAR_USEPOLLING=true
+    env_file: ./.env
+    command: sh -c "chmod +x /docker-init/scripts/entrypoint.sh && /docker-init/scripts/entrypoint.sh"
+  api: # laravel apiサーバー
+    container_name: ${APP_NAME}-api
+    tty: true
+    build:
+      context: "./apps/api"
+    environment:
+      - TZ=Asia/Tokyo
+    env_file: ./.env
+    working_dir: /var/www/${API_APP_NAME}
+    volumes:
+      - ./apps/api/${API_APP_NAME}:/var/www/${API_APP_NAME}
+      - api-vendor:/var/www/vendor
+      - ./apps/api/scripts:/docker-init/scripts
+      - ./apps/api/templates:/docker-init/env_templates
+    command: sh -c "chmod +x /docker-init/scripts/entrypoint.sh && /docker-init/scripts/entrypoint.sh"
+    depends_on:
+      - db
+  frontend-server:
+    container_name: ${APP_NAME}-frontend-server
+    image: nginx
+    volumes:
+      - ./nginx-proxy/frontend/templates:/etc/nginx/conf.d/templates
+      - ./nginx-proxy/frontend/sh:/etc/nginx/conf.d/sh
+      - ./nginx-proxy/frontend/log:/var/log/nginx
+    restart: always
+    command: sh -c "chmod +x /etc/nginx/conf.d/sh/entrypoint-nginx.sh && /etc/nginx/conf.d/sh/entrypoint-nginx.sh"
+    env_file: ./.env
+    working_dir: /var/www
+    networks:
+      default:
+      proxy-server-network:
+        aliases:
+          - proxy-server-frontend
+    depends_on:
+      - web
+  backend-server:
+    container_name: ${APP_NAME}-backend-server
+    image: nginx
+    volumes:
+      - ./apps/api/${API_APP_NAME}:/var/www/${API_APP_NAME} # laravelのアプリケーションサーバーにはアクセスせず、同じディレクトリ参照するだけ
+      - ./nginx-proxy/backend/templates:/etc/nginx/conf.d/templates
+      - ./nginx-proxy/backend/sh:/etc/nginx/conf.d/sh
+      - ./nginx-proxy/backend/log:/var/log/nginx
+    restart: always
+    command: sh -c "chmod +x /etc/nginx/conf.d/sh/entrypoint-nginx.sh && /etc/nginx/conf.d/sh/entrypoint-nginx.sh"
+    env_file: ./.env
+    working_dir: /var/www/${API_APP_NAME}
+    networks:
+      default:
+      proxy-server-network:
+        aliases:
+          - proxy-server-backend
+    depends_on:
+      - api
+  nginx-proxy:
+    container_name: ${APP_NAME}-nginx-proxy
+    image: nginx
+    ports:
+      - ${NGINX_PORT}:${NGINX_PORT}
+      - ${NGINX_SSL_PORT}:${NGINX_SSL_PORT}
+    volumes:
+      - ./nginx-proxy/templates:/etc/nginx/conf.d/templates
+      - ./nginx-proxy/sh:/etc/nginx/conf.d/sh
+      - ./nginx-proxy/log:/var/log/nginx
+    restart: always
+    command: sh -c "chmod +x /etc/nginx/conf.d/sh/entrypoint-nginx.sh && /etc/nginx/conf.d/sh/entrypoint-nginx.sh"
+    env_file: ./.env
+    working_dir: /var/www
+    networks:
+      default:
+      proxy-server-network:
+        aliases:
+          - proxy-server-proxy
+    depends_on:
+      - backend-server
+      - frontend-server
+  db:
+    container_name: ${APP_NAME}-db
+    build:
+      context: "./postgres"
+    restart: always
+    volumes:
+      - db-store:/var/lib/postgresql/data
+    user: ${POSTGRES_USER}
+    env_file: ./.env
+volumes:
+  db-store:
+  node_modules:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${APP_ROOT_PATH}/apps/web/${WEB_APP_NAME}/node_modules
+      o: bind
+  api-vendor:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${APP_ROOT_PATH}/apps/api/${API_APP_NAME}/vendor
+      o: bind
+networks:
+  proxy-server-network:

@@ -1,0 +1,44 @@
+server {
+    listen ${BACKEND_PROXY_PORT};
+    listen [::]:${BACKEND_PROXY_PORT};
+
+    server_name "${PROXY_SERVER_BACKEND}";
+
+    root /var/www/${API_APP_NAME}/public;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-XSS-Protection "1; mode=block";
+    add_header X-Content-Type-Options "nosniff";
+
+    index index.php;
+
+    charset utf-8;
+
+    location / {
+        # すべてのurlにapiを付与して自サーバーへ流す
+        rewrite ^/(.*)$ /api/$1 break;
+        proxy_pass "http://${PROXY_SERVER_BACKEND}:${BACKEND_PROXY_PORT}";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /api {
+      try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+        # TCPソケットを使用してPHP-FPMと通信するための設定
+        fastcgi_pass ${API_CONTAINER}:${API_FPM_PORT}; 
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}

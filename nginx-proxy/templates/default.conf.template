@@ -1,0 +1,32 @@
+map $http_host $server_network_alias {
+    include /etc/nginx/conf.d/domain_list;
+}
+
+map $http_host $front_container {
+    default ${WEB_CONTAINER}:${WEB_WEB_PORT};
+}
+
+server {
+    listen ${NGINX_PORT};
+    server_name ~${HOST_DOMAIN};
+
+    location /_vite/ws-hmr {
+        resolver 127.0.0.11;
+
+        proxy_set_header Host $host;
+        proxy_pass "http://$front_container/_vite/ws-hmr";
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    location / {
+        resolver 127.0.0.11;
+
+        proxy_set_header Host $host;
+        proxy_pass "http://$server_network_alias";
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
